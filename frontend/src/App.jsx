@@ -34,29 +34,39 @@ function PrizeSection() {
   );
 }
 
-function BetForm({ onSubmitted }) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+function BetForm({ onSubmitted, userInfo, players }) {
+  const [name, setName] = useState(userInfo?.name || "");
+  const [email, setEmail] = useState(userInfo?.email || "");
+  const [phone, setPhone] = useState(userInfo?.phone || "");
   const [scoreHome, setScoreHome] = useState("");
   const [scoreAway, setScoreAway] = useState("");
-  const [goals, setGoals] = useState([
-    { team: "casa", player: "", minute: "" },
-  ]);
+  const [homeGoals, setHomeGoals] = useState([]);
+  const [awayGoals, setAwayGoals] = useState([]);
+  const [homePlayer, setHomePlayer] = useState("");
+  const [homeMinute, setHomeMinute] = useState("");
+  const [awayPlayer, setAwayPlayer] = useState("");
+  const [awayMinute, setAwayMinute] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const handleGoalChange = (index, field, value) => {
-    setGoals((prev) =>
-      prev.map((g, i) => (i === index ? { ...g, [field]: value } : g))
-    );
+  const addHomeGoal = () => {
+    if (!homePlayer || !homeMinute) return;
+    setHomeGoals((prev) => [
+      ...prev,
+      { player: homePlayer, minute: Number(homeMinute) },
+    ]);
+    setHomeMinute("");
+    setHomePlayer("");
   };
 
-  const addGoalRow = () => {
-    setGoals((prev) => [...prev, { team: "casa", player: "", minute: "" }]);
-  };
-
-  const removeGoalRow = (index) => {
-    setGoals((prev) => prev.filter((_, i) => i !== index));
+  const addAwayGoal = () => {
+    if (!awayPlayer || !awayMinute) return;
+    setAwayGoals((prev) => [
+      ...prev,
+      { player: awayPlayer, minute: Number(awayMinute) },
+    ]);
+    setAwayMinute("");
+    setAwayPlayer("");
   };
 
   const handleSubmit = async (e) => {
@@ -66,22 +76,32 @@ function BetForm({ onSubmitted }) {
     const parsedHome = Number(scoreHome);
     const parsedAway = Number(scoreAway);
 
-    if (!name.trim()) {
+    const finalName = (userInfo?.name || name || "").trim();
+    const finalEmail = (userInfo?.email || email || "").trim();
+    const finalPhone = (userInfo?.phone || phone || "").trim();
+
+    if (!finalName) {
       setError("Indica o teu nome.");
       return;
     }
+
     if (Number.isNaN(parsedHome) || Number.isNaN(parsedAway)) {
       setError("Resultado inválido.");
       return;
     }
 
-    const filteredGoals = goals
-      .filter((g) => g.player.trim() && g.minute !== "")
-      .map((g) => ({
-        team: g.team,
-        player: g.player.trim(),
-        minute: Number(g.minute),
-      }));
+    const allGoals = [
+      ...homeGoals.map((g) => ({
+        team: "casa",
+        player: g.player,
+        minute: g.minute,
+      })),
+      ...awayGoals.map((g) => ({
+        team: "fora",
+        player: g.player,
+        minute: g.minute,
+      })),
+    ];
 
     setSubmitting(true);
     try {
@@ -91,11 +111,12 @@ function BetForm({ onSubmitted }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim() || null,
+          name: finalName,
+          email: finalEmail || null,
+          phone: finalPhone || null,
           score_home: parsedHome,
           score_away: parsedAway,
-          goals: filteredGoals,
+          goals: allGoals,
         }),
       });
       if (!res.ok) {
@@ -103,11 +124,14 @@ function BetForm({ onSubmitted }) {
         throw new Error(data.error || "Erro ao enviar aposta.");
       }
       onSubmitted();
-      setName("");
-      setEmail("");
       setScoreHome("");
       setScoreAway("");
-      setGoals([{ team: "casa", player: "", minute: "" }]);
+      setHomeGoals([]);
+      setAwayGoals([]);
+      setHomePlayer("");
+      setHomeMinute("");
+      setAwayPlayer("");
+      setAwayMinute("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -119,24 +143,37 @@ function BetForm({ onSubmitted }) {
     <section className="card">
       <h2>Faz a tua aposta</h2>
       <form onSubmit={handleSubmit} className="form">
-        <div className="form-row">
-          <label>Nome *</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-row">
-          <label>Email / contacto</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Opcional, para contacto se ganhares"
-          />
-        </div>
+        {!userInfo && (
+          <>
+            <div className="form-row">
+              <label>Nome *</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="form-row">
+              <label>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Opcional, para contacto se ganhares"
+              />
+            </div>
+            <div className="form-row">
+              <label>Telefone</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Opcional"
+              />
+            </div>
+          </>
+        )}
         <div className="form-row form-row-inline">
           <div>
             <label>Golos equipa da casa *</label>
@@ -163,58 +200,88 @@ function BetForm({ onSubmitted }) {
         <div className="form-row">
           <label>Marcadores e minutos dos golos</label>
           <p className="hint">
-            Adiciona quem marca e em que minuto. Opcional, mas necessário para
-            lutar pelo 1º prémio.
+            Seleciona o marcador de cada equipa e o minuto do golo.
           </p>
-          <div className="goals-table">
-            {goals.map((g, index) => (
-              <div key={index} className="goal-row">
+
+          <div className="goals-section">
+            <div className="goals-column">
+              <h3 className="goals-title">Marcador {players?.homeLabel || "equipa da casa"}</h3>
+              <div className="goal-row">
                 <select
-                  value={g.team}
-                  onChange={(e) =>
-                    handleGoalChange(index, "team", e.target.value)
-                  }
+                  value={homePlayer}
+                  onChange={(e) => setHomePlayer(e.target.value)}
                 >
-                  <option value="casa">Equipa da casa</option>
-                  <option value="fora">Equipa visitante</option>
+                  <option value="">Escolhe o jogador</option>
+                  {(players?.home || []).map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
                 </select>
-                <input
-                  type="text"
-                  placeholder="Nome do jogador"
-                  value={g.player}
-                  onChange={(e) =>
-                    handleGoalChange(index, "player", e.target.value)
-                  }
-                />
                 <input
                   type="number"
                   min="1"
                   max="120"
                   placeholder="Minuto"
-                  value={g.minute}
-                  onChange={(e) =>
-                    handleGoalChange(index, "minute", e.target.value)
-                  }
+                  value={homeMinute}
+                  onChange={(e) => setHomeMinute(e.target.value)}
                 />
-                {goals.length > 1 && (
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => removeGoalRow(index)}
-                  >
-                    Remover
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={addHomeGoal}
+                >
+                  Confirmar
+                </button>
               </div>
-            ))}
+              <div className="selected-goals">
+                {homeGoals.map((g, idx) => (
+                  <div key={idx} className="selected-goal-chip">
+                    {g.player} {g.minute}&apos;
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="goals-column">
+              <h3 className="goals-title">Marcador {players?.awayLabel || "equipa visitante"}</h3>
+              <div className="goal-row">
+                <select
+                  value={awayPlayer}
+                  onChange={(e) => setAwayPlayer(e.target.value)}
+                >
+                  <option value="">Escolhe o jogador</option>
+                  {(players?.away || []).map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  placeholder="Minuto"
+                  value={awayMinute}
+                  onChange={(e) => setAwayMinute(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={addAwayGoal}
+                >
+                  Confirmar
+                </button>
+              </div>
+              <div className="selected-goals">
+                {awayGoals.map((g, idx) => (
+                  <div key={idx} className="selected-goal-chip">
+                    {g.player} {g.minute}&apos;
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={addGoalRow}
-          >
-            Adicionar golo
-          </button>
         </div>
 
         {error && <p className="error">{error}</p>}
@@ -331,9 +398,93 @@ function Leaderboard() {
   );
 }
 
+function EntryForm({ onEnter }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onEnter({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+    });
+  };
+
+  return (
+    <section className="card hero-card">
+      <h2>Bem-vindo</h2>
+      <p className="hint">
+        Preenche os teus dados para entrares no sistema de previsões deste jogo.
+      </p>
+      <form onSubmit={handleSubmit} className="form">
+        <div className="form-row">
+          <label>Nome *</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-row">
+          <label>Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Opcional"
+          />
+        </div>
+        <div className="form-row">
+          <label>Telefone</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Opcional"
+          />
+        </div>
+        <button type="submit" className="primary-button">
+          ENTRAR
+        </button>
+      </form>
+    </section>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState("home");
   const [justSubmitted, setJustSubmitted] = useState(false);
+  const [matchInfo, setMatchInfo] = useState(null);
+  const [players, setPlayers] = useState({ home: [], away: [] });
+  const [userInfo, setUserInfo] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/match`)
+      .then((res) => res.json())
+      .then((data) => {
+        setMatchInfo(data.match || null);
+      })
+      .catch(() => {
+        setMatchInfo(null);
+      });
+    fetch(`${API_BASE}/api/players`)
+      .then((res) => res.json())
+      .then((data) => {
+        setPlayers({
+          home: data.home || [],
+          away: data.away || [],
+          homeLabel: data.homeLabel,
+          awayLabel: data.awayLabel,
+        });
+      })
+      .catch(() => {
+        setPlayers({ home: [], away: [] });
+      });
+  }, []);
 
   const goTo = (target) => {
     setPage(target);
@@ -346,10 +497,31 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div className="brand">
+          {matchInfo?.home_logo && (
+            <img
+              src={matchInfo.home_logo}
+              alt={matchInfo.home_team}
+              className="team-logo"
+            />
+          )}
           <span className="ball">⚽</span>
+          {matchInfo?.away_logo && (
+            <img
+              src={matchInfo.away_logo}
+              alt={matchInfo.away_team}
+              className="team-logo"
+            />
+          )}
           <div>
-            <h1>Aposta Jogo Único</h1>
-            <p>Aposta no resultado exato, marcadores e minutos.</p>
+            <h1>
+              {matchInfo
+                ? `${matchInfo.home_team} vs ${matchInfo.away_team}`
+                : "Aposta Jogo Único"}
+            </h1>
+            <p>
+              {matchInfo?.description ||
+                "Aposta no resultado exato, marcadores e minutos."}
+            </p>
           </div>
         </div>
         <nav className="nav">
@@ -379,28 +551,12 @@ export default function App() {
       <main className="main">
         {page === "home" && (
           <>
-            <section className="card hero-card">
-              <h2>Como funciona?</h2>
-              <ol className="steps">
-                <li>
-                  <strong>1. Vê os prémios</strong> nesta página.
-                </li>
-                <li>
-                  <strong>2. Faz a tua aposta</strong> com resultado exato,
-                  marcadores e minutos.
-                </li>
-                <li>
-                  <strong>3. Espera pelo fim do jogo</strong> para ver quem
-                  ficou mais perto no leaderboard.
-                </li>
-              </ol>
-              <button
-                className="primary-button"
-                onClick={() => goTo("bet")}
-              >
-                Começar aposta
-              </button>
-            </section>
+            <EntryForm
+              onEnter={(info) => {
+                setUserInfo(info);
+                goTo("bet");
+              }}
+            />
             <PrizeSection />
           </>
         )}
@@ -417,6 +573,8 @@ export default function App() {
               </div>
             )}
             <BetForm
+              userInfo={userInfo}
+              players={players}
               onSubmitted={() => {
                 setJustSubmitted(true);
               }}

@@ -36,6 +36,12 @@ body {
   gap: 0.75rem;
 }
 
+.team-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
 .brand h1 {
   margin: 0;
   font-size: 1.2rem;
@@ -240,18 +246,45 @@ select:focus {
   color: #d1d5db;
 }
 
-.goals-table {
+.goal-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.goals-section {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.goals-column {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  margin-top: 0.5rem;
 }
 
-.goal-row {
-  display: grid;
-  grid-template-columns: 1.1fr 2fr 1.1fr auto;
-  gap: 0.5rem;
-  align-items: center;
+.goals-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.selected-goals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.selected-goal-chip {
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.5rem;
+  background: rgba(148, 163, 184, 0.15);
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  font-size: 0.8rem;
 }
 
 .table-wrapper {
@@ -354,6 +387,10 @@ select:focus {
   }
 
   .goal-row {
+    grid-template-columns: 1fr;
+  }
+
+  .goals-section {
     grid-template-columns: 1fr;
   }
 }

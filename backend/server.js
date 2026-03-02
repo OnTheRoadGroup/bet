@@ -7,6 +7,55 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const FOOTBALL_API_BASE =
+  process.env.FOOTBALL_API_BASE || "https://api.football-data.org/v4";
+const FOOTBALL_API_TOKEN = process.env.FOOTBALL_API_TOKEN;
+
+function parsePlayers(value) {
+  return String(value || "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+const MATCH_CONFIG = {
+  home_team: process.env.MATCH_HOME_TEAM || "Equipa da casa",
+  away_team: process.env.MATCH_AWAY_TEAM || "Equipa visitante",
+  kickoff_at: process.env.MATCH_KICKOFF_AT || null,
+  description:
+    process.env.MATCH_DESCRIPTION ||
+    "Aposta no resultado exato, marcadores e minutos deste jogo único.",
+  home_logo: process.env.MATCH_HOME_LOGO || null,
+  away_logo: process.env.MATCH_AWAY_LOGO || null,
+  home_players: parsePlayers(process.env.MATCH_HOME_PLAYERS),
+  away_players: parsePlayers(process.env.MATCH_AWAY_PLAYERS),
+};
+
+async function fetchSquadFromFootballData(teamId) {
+  if (!FOOTBALL_API_TOKEN || !teamId) return null;
+  try {
+    const url = `${FOOTBALL_API_BASE}/teams/${teamId}`;
+    const response = await fetch(url, {
+      headers: {
+        "X-Auth-Token": FOOTBALL_API_TOKEN,
+      },
+    });
+    if (!response.ok) {
+      console.error("football-data.org error", response.status, await response.text());
+      return null;
+    }
+    const data = await response.json();
+    const squad = Array.isArray(data.squad) ? data.squad : [];
+    return squad
+      .map((p) => p.name)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+  } catch (err) {
+    console.error("Erro ao obter plantel da football-data.org", err);
+    return null;
+  }
+}
+
 const DB_FILE = process.env.DB_FILE || path.join(__dirname, "database.sqlite");
 const db = new Database(DB_FILE);
 db.pragma("journal_mode = WAL");
@@ -16,6 +65,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     email TEXT,
+    phone TEXT,
     score_home INTEGER NOT NULL,
     score_away INTEGER NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -44,6 +94,14 @@ db.exec(`
   );
 `);
 
+const predictionColumns = db
+  .prepare("PRAGMA table_info(predictions)")
+  .all()
+  .map((c) => c.name);
+if (!predictionColumns.includes("phone")) {
+  db.prepare("ALTER TABLE predictions ADD COLUMN phone TEXT").run();
+}
+
 function getResultFromDb() {
   const resultRow = db.prepare("SELECT * FROM match_result WHERE id = 1").get();
   if (!resultRow) return null;
@@ -67,6 +125,7 @@ function getPredictionFromDb(predRow) {
     id: predRow.id,
     name: predRow.name,
     email: predRow.email,
+    phone: predRow.phone,
     score_home: predRow.score_home,
     score_away: predRow.score_away,
     created_at: predRow.created_at,
@@ -167,18 +226,69 @@ app.get("/api/prizes", (req, res) => {
   });
 });
 
+app.get("/api/match", (req, res) => {
+  res.json({
+    match: MATCH_CONFIG,
+  });
+});
+
+app.get("/api/players", async (req, res) => {
+  try {
+    let homePlayers = MATCH_CONFIG.home_players;
+    let awayPlayers = MATCH_CONFIG.away_players;
+
+    const homeId = process.env.MATCH_HOME_TEAM_ID;
+    const awayId = process.env.MATCH_AWAY_TEAM_ID;
+
+    if (FOOTBALL_API_TOKEN && (homeId || awayId)) {
+      const [homeFromApi, awayFromApi] = await Promise.all([
+        homeId ? fetchSquadFromFootballData(homeId) : null,
+        awayId ? fetchSquadFromFootballData(awayId) : null,
+      ]);
+
+      if (homeFromApi && homeFromApi.length > 0) {
+        homePlayers = homeFromApi;
+      }
+      if (awayFromApi && awayFromApi.length > 0) {
+        awayPlayers = awayFromApi;
+      }
+    }
+
+    res.json({
+      home: homePlayers,
+      away: awayPlayers,
+      homeLabel: MATCH_CONFIG.home_team,
+      awayLabel: MATCH_CONFIG.away_team,
+    });
+  } catch (err) {
+    console.error("Erro em /api/players", err);
+    res.json({
+      home: MATCH_CONFIG.home_players,
+      away: MATCH_CONFIG.away_players,
+      homeLabel: MATCH_CONFIG.home_team,
+      awayLabel: MATCH_CONFIG.away_team,
+    });
+  }
+});
+
 app.post("/api/predictions", (req, res) => {
   try {
-    const { name, email, score_home, score_away, goals } = req.body || {};
+    const { name, email, phone, score_home, score_away, goals } = req.body || {};
 
     if (!name || typeof score_home !== "number" || typeof score_away !== "number") {
       return res.status(400).json({ error: "Dados obrigatórios em falta." });
     }
 
     const insertPred = db.prepare(
-      "INSERT INTO predictions (name, email, score_home, score_away) VALUES (?, ?, ?, ?)"
+      "INSERT INTO predictions (name, email, phone, score_home, score_away) VALUES (?, ?, ?, ?, ?)"
     );
-    const result = insertPred.run(name.trim(), email || null, score_home, score_away);
+    const result = insertPred.run(
+      name.trim(),
+      email || null,
+      phone || null,
+      score_home,
+      score_away
+    );
     const predictionId = result.lastInsertRowid;
 
     if (Array.isArray(goals)) {
