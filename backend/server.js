@@ -208,19 +208,17 @@ app.get("/api/prizes", (req, res) => {
         id: 1,
         name: "1º Prémio",
         description:
-          "Para quem acertar exatamente o resultado, os marcadores e os minutos dos golos.",
+          "Uma camisola oficial autografada e um bolo GRD do Doce do António.",
       },
       {
         id: 2,
         name: "2º Prémio",
-        description:
-          "Para o segundo palpite mais próximo do resultado real.",
+        description: "Um bolo GRD do Doce do António.",
       },
       {
         id: 3,
         name: "3º Prémio",
-        description:
-          "Para o terceiro palpite mais próximo do resultado real.",
+        description: "Um bolo MED do Doce do António.",
       },
     ],
   });

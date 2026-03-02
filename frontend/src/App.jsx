@@ -513,14 +513,14 @@ export default function App() {
             />
           )}
           <div>
-            <h1>
-              {matchInfo
-                ? `${matchInfo.home_team} vs ${matchInfo.away_team}`
-                : "Aposta Jogo Único"}
-            </h1>
+            <h1>On The Road Game Lounge</h1>
             <p>
-              {matchInfo?.description ||
-                "Aposta no resultado exato, marcadores e minutos."}
+              {matchInfo
+                ? `${matchInfo.home_team} vs ${matchInfo.away_team} · ${
+                    matchInfo.description ||
+                    "Aposta no resultado exato, marcadores e minutos."
+                  }`
+                : "Aposta no resultado exato, marcadores e minutos."}
             </p>
           </div>
         </div>
@@ -586,7 +586,7 @@ export default function App() {
       </main>
 
       <footer className="footer">
-        <span>Jogo único · Sistema de apostas amigável</span>
+        <span>On The Road Game Lounge · On The Road Group</span>
       </footer>
     </div>
   );

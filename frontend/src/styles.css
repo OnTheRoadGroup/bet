@@ -7,7 +7,7 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top, #0b1320, #05070c 60%);
+  background: radial-gradient(circle at top, #7f1d1d, #020202 65%);
   color: #f9fafb;
 }
 
@@ -78,8 +78,8 @@ body {
 }
 
 .nav-button.active {
-  background: #22c55e;
-  color: #022c22;
+  background: #ef4444;
+  color: #f9fafb;
 }
 
 .main {
@@ -93,7 +93,7 @@ body {
 }
 
 .card {
-  background: radial-gradient(circle at top left, #1f2937, #020617 70%);
+  background: radial-gradient(circle at top left, #3f1d1d, #020202 75%);
   border-radius: 1rem;
   padding: 1.5rem 1.75rem;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
@@ -127,15 +127,15 @@ body {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: #022c22;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: #f9fafb;
   font-weight: 600;
-  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 8px 20px rgba(248, 113, 113, 0.4);
 }
 
 .primary-button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 26px rgba(34, 197, 94, 0.5);
+  box-shadow: 0 12px 26px rgba(248, 113, 113, 0.6);
 }
 
 .primary-button:disabled {
@@ -145,12 +145,12 @@ body {
 }
 
 .secondary-button {
-  background: rgba(55, 65, 81, 0.8);
+  background: rgba(127, 29, 29, 0.85);
   color: #e5e7eb;
 }
 
 .secondary-button:hover {
-  background: rgba(75, 85, 99, 0.9);
+  background: rgba(220, 38, 38, 0.95);
 }
 
 .ghost-button {
@@ -219,8 +219,8 @@ select:focus {
 }
 
 .success-card {
-  border-color: rgba(34, 197, 94, 0.7);
-  background: radial-gradient(circle at top left, #065f46, #022c22 60%);
+  border-color: rgba(248, 113, 113, 0.8);
+  background: radial-gradient(circle at top left, #7f1d1d, #1c1917 60%);
 }
 
 .prize-list {
@@ -368,11 +368,11 @@ select:focus {
 
 .footer {
   padding: 1rem 2rem 1.5rem;
-  border-top: 1px solid rgba(31, 41, 55, 0.9);
+  border-top: 1px solid rgba(127, 29, 29, 0.9);
   font-size: 0.8rem;
   color: #9ca3af;
   text-align: center;
-  background: rgba(3, 7, 18, 0.95);
+  background: rgba(3, 3, 3, 0.98);
 }
 
 @media (max-width: 720px) {
