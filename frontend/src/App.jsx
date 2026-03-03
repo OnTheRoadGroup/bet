@@ -331,6 +331,12 @@ function Leaderboard() {
       .finally(() => setLoading(false));
   }, []);
 
+  const getPoints = (item) => {
+    if (item.distance === null || item.distance === undefined) return null;
+    if (item.isExact) return 1000;
+    return Math.max(0, 1000 - item.distance);
+  };
+
   return (
     <section className="card">
       <h2>Leaderboard</h2>
@@ -344,59 +350,67 @@ function Leaderboard() {
             </p>
           )}
           {data.hasResult && data.result && (
-            <p className="result-info">
-              Resultado oficial:{" "}
-              <strong>
-                {data.result.score_home} - {data.result.score_away}
-              </strong>
-            </p>
+            <div className="result-chip">
+              <span className="result-chip-label">Resultado oficial</span>
+              <span className="result-chip-score">
+                {data.result.score_home} – {data.result.score_away}
+              </span>
+            </div>
           )}
-          <div className="table-wrapper">
-            <table className="leaderboard-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Nome</th>
-                  <th>Resultado</th>
-                  <th>Marcadores</th>
-                  {data.hasResult && <th>Prémio</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {data.leaderboard.map((item, idx) => (
-                  <tr key={item.id}>
-                    <td>{idx + 1}</td>
-                    <td>{item.name}</td>
-                    <td>
-                      {item.score_home} - {item.score_away}
-                    </td>
-                    <td>
-                      {Array.isArray(item.goals) && item.goals.length > 0 ? (
-                        item.goals.map((g, i) => (
-                          <span key={i} className="goal-chip">
-                            {g.team === "casa" ? "Casa" : "Fora"} - {g.player} ({g.minute}&apos;)
-                          </span>
-                        ))
-                      ) : (
-                        <span className="muted">—</span>
+          <div className="lb-list">
+            {data.leaderboard.map((item, idx) => {
+              const points = getPoints(item);
+              const isPrize = item.prizeTier != null;
+              const thirdItem = data.leaderboard[2];
+              const gapToThird =
+                data.hasResult && !isPrize && thirdItem
+                  ? item.distance - thirdItem.distance
+                  : null;
+
+              return (
+                <div
+                  key={item.id}
+                  className={`lb-row${isPrize ? ` lb-prize-${item.prizeTier}` : ""}`}
+                >
+                  <div className="lb-rank">
+                    {item.prizeTier === 1 && <span className="badge first">1º</span>}
+                    {item.prizeTier === 2 && <span className="badge second">2º</span>}
+                    {item.prizeTier === 3 && <span className="badge third">3º</span>}
+                    {!isPrize && <span className="lb-pos-num">{idx + 1}º</span>}
+                  </div>
+                  <div className="lb-main">
+                    <div className="lb-name">{item.name}</div>
+                    <div className="lb-pred">
+                      Apostou <strong>{item.score_home}–{item.score_away}</strong>
+                    </div>
+                  </div>
+                  {data.hasResult && points !== null && (
+                    <div className="lb-kpi">
+                      <div className="lb-pts">
+                        {points}<span className="lb-pts-label"> pts</span>
+                      </div>
+                      {item.isExact && (
+                        <div className="lb-status exact">✓ Exato</div>
                       )}
-                    </td>
-                    {data.hasResult && (
-                      <td>
-                        {item.prizeTier === 1 && <span className="badge first">1º</span>}
-                        {item.prizeTier === 2 && <span className="badge second">2º</span>}
-                        {item.prizeTier === 3 && <span className="badge third">3º</span>}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-                {data.leaderboard.length === 0 && (
-                  <tr>
-                    <td colSpan={data.hasResult ? 5 : 4}>Ainda não há apostas registadas.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                      {!item.isExact && isPrize && (
+                        <div className="lb-status prize">Prémio 🏆</div>
+                      )}
+                      {!isPrize && gapToThird !== null && (
+                        <div className="lb-status gap">−{gapToThird} pts p/ 3º</div>
+                      )}
+                      {!isPrize && gapToThird === null && (
+                        <div className="lb-status prize">Prémio 🏆</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {data.leaderboard.length === 0 && (
+              <p className="hint" style={{ marginTop: "0.5rem" }}>
+                Ainda não há apostas registadas.
+              </p>
+            )}
           </div>
         </>
       )}
