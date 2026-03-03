@@ -10,6 +10,7 @@ app.use(express.json());
 const FOOTBALL_API_BASE =
   process.env.FOOTBALL_API_BASE || "https://api.football-data.org/v4";
 const FOOTBALL_API_TOKEN = process.env.FOOTBALL_API_TOKEN;
+const MATCH_ID = process.env.MATCH_ID || null;
 
 function parsePlayers(value) {
   return String(value || "")
@@ -18,7 +19,7 @@ function parsePlayers(value) {
     .filter(Boolean);
 }
 
-const MATCH_CONFIG = {
+let MATCH_CONFIG = {
   home_team: process.env.MATCH_HOME_TEAM || "Equipa da casa",
   away_team: process.env.MATCH_AWAY_TEAM || "Equipa visitante",
   kickoff_at: process.env.MATCH_KICKOFF_AT || null,
@@ -29,7 +30,51 @@ const MATCH_CONFIG = {
   away_logo: process.env.MATCH_AWAY_LOGO || null,
   home_players: parsePlayers(process.env.MATCH_HOME_PLAYERS),
   away_players: parsePlayers(process.env.MATCH_AWAY_PLAYERS),
+  home_team_id: process.env.MATCH_HOME_TEAM_ID || null,
+  away_team_id: process.env.MATCH_AWAY_TEAM_ID || null,
 };
+
+async function fetchMatchFromFootballData() {
+  if (!FOOTBALL_API_TOKEN || !MATCH_ID) return;
+  try {
+    const url = `${FOOTBALL_API_BASE}/matches/${MATCH_ID}`;
+    const response = await fetch(url, {
+      headers: { "X-Auth-Token": FOOTBALL_API_TOKEN },
+    });
+    if (!response.ok) {
+      console.error("football-data.org match error", response.status, await response.text());
+      return;
+    }
+    const data = await response.json();
+    const home = data.homeTeam || {};
+    const away = data.awayTeam || {};
+    const competition = data.competition || {};
+
+    // Preenche apenas os campos não configurados manualmente
+    if (!process.env.MATCH_HOME_TEAM)
+      MATCH_CONFIG.home_team = home.shortName || home.name || MATCH_CONFIG.home_team;
+    if (!process.env.MATCH_AWAY_TEAM)
+      MATCH_CONFIG.away_team = away.shortName || away.name || MATCH_CONFIG.away_team;
+    if (!process.env.MATCH_KICKOFF_AT)
+      MATCH_CONFIG.kickoff_at = data.utcDate || MATCH_CONFIG.kickoff_at;
+    if (!process.env.MATCH_HOME_LOGO)
+      MATCH_CONFIG.home_logo = home.crest || MATCH_CONFIG.home_logo;
+    if (!process.env.MATCH_AWAY_LOGO)
+      MATCH_CONFIG.away_logo = away.crest || MATCH_CONFIG.away_logo;
+    if (!process.env.MATCH_HOME_TEAM_ID && home.id)
+      MATCH_CONFIG.home_team_id = String(home.id);
+    if (!process.env.MATCH_AWAY_TEAM_ID && away.id)
+      MATCH_CONFIG.away_team_id = String(away.id);
+    if (!process.env.MATCH_DESCRIPTION && competition.name)
+      MATCH_CONFIG.description = `${competition.name} · Aposta no resultado exato, marcadores e minutos.`;
+
+    console.log(
+      `[match] ${MATCH_CONFIG.home_team} vs ${MATCH_CONFIG.away_team} — ${MATCH_CONFIG.kickoff_at}`
+    );
+  } catch (err) {
+    console.error("Erro ao carregar jogo da football-data.org", err);
+  }
+}
 
 async function fetchSquadFromFootballData(teamId) {
   if (!FOOTBALL_API_TOKEN || !teamId) return null;
@@ -235,8 +280,8 @@ app.get("/api/players", async (req, res) => {
     let homePlayers = MATCH_CONFIG.home_players;
     let awayPlayers = MATCH_CONFIG.away_players;
 
-    const homeId = process.env.MATCH_HOME_TEAM_ID;
-    const awayId = process.env.MATCH_AWAY_TEAM_ID;
+    const homeId = MATCH_CONFIG.home_team_id;
+    const awayId = MATCH_CONFIG.away_team_id;
 
     if (FOOTBALL_API_TOKEN && (homeId || awayId)) {
       const [homeFromApi, awayFromApi] = await Promise.all([
@@ -418,5 +463,6 @@ app.get("/api/leaderboard", (req, res) => {
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Servidor a correr na porta ${PORT}`);
+  fetchMatchFromFootballData();
 });
 

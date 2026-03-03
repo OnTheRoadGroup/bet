@@ -398,6 +398,45 @@ function Leaderboard() {
   );
 }
 
+function MatchCard({ match }) {
+  if (!match) return null;
+
+  const kickoff = match.kickoff_at ? new Date(match.kickoff_at) : null;
+  const kickoffStr = kickoff
+    ? kickoff.toLocaleString("pt-PT", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
+  return (
+    <section className="card match-card">
+      <h2>O Jogo</h2>
+      <div className="match-teams">
+        <div className="match-team">
+          {match.home_logo && (
+            <img src={match.home_logo} alt={match.home_team} className="match-team-logo" />
+          )}
+          <span className="match-team-name">{match.home_team}</span>
+        </div>
+        <span className="match-vs">VS</span>
+        <div className="match-team">
+          {match.away_logo && (
+            <img src={match.away_logo} alt={match.away_team} className="match-team-logo" />
+          )}
+          <span className="match-team-name">{match.away_team}</span>
+        </div>
+      </div>
+      {kickoffStr && <p className="match-kickoff">📅 {kickoffStr}</p>}
+      {match.description && <p className="match-description">{match.description}</p>}
+    </section>
+  );
+}
+
 function EntryForm({ onEnter }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -551,6 +590,7 @@ export default function App() {
       <main className="main">
         {page === "home" && (
           <>
+            <MatchCard match={matchInfo} />
             <EntryForm
               onEnter={(info) => {
                 setUserInfo(info);
