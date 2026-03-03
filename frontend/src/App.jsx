@@ -310,13 +310,18 @@ function BetForm({ onSubmitted, userInfo, players }) {
   );
 }
 
+const REFRESH_INTERVAL = 20000;
+
 function Leaderboard() {
   const [data, setData] = useState({ leaderboard: [], hasResult: false });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  useEffect(() => {
-    setLoading(true);
+  const load = (isInitial = false) => {
+    if (isInitial) setLoading(true);
+    else setRefreshing(true);
     setError("");
     fetch(`${API_BASE}/api/leaderboard`)
       .then((res) => res.json())
@@ -326,9 +331,19 @@ function Leaderboard() {
           hasResult: d.hasResult,
           result: d.result || null,
         });
+        setLastUpdated(new Date());
       })
       .catch(() => setError("Não foi possível carregar o leaderboard."))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
+  };
+
+  useEffect(() => {
+    load(true);
+    const interval = setInterval(() => load(false), REFRESH_INTERVAL);
+    return () => clearInterval(interval);
   }, []);
 
   const getPoints = (item) => {
@@ -337,21 +352,36 @@ function Leaderboard() {
     return Math.max(0, 1000 - item.distance);
   };
 
+  const updatedStr = lastUpdated
+    ? lastUpdated.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : null;
+
   return (
     <section className="card">
-      <h2>Leaderboard</h2>
+      <div className="lb-header">
+        <h2 style={{ margin: 0 }}>Leaderboard</h2>
+        <div className="live-badge">
+          <span className="live-dot" />
+          AO VIVO
+        </div>
+      </div>
+      {updatedStr && (
+        <p className="lb-updated">
+          {refreshing ? "A atualizar..." : `Atualizado às ${updatedStr}`}
+        </p>
+      )}
       {loading && <p className="hint">A carregar...</p>}
       {error && <p className="error">{error}</p>}
       {!loading && !error && (
         <>
           {!data.hasResult && (
             <p className="hint">
-              Resultado ainda não registado. A classificação será atualizada após o jogo.
+              A aguardar dados do jogo — as classificações aparecem assim que o marcador for atualizado.
             </p>
           )}
           {data.hasResult && data.result && (
             <div className="result-chip">
-              <span className="result-chip-label">Resultado oficial</span>
+              <span className="result-chip-label">Marcador atual</span>
               <span className="result-chip-score">
                 {data.result.score_home} – {data.result.score_away}
               </span>
