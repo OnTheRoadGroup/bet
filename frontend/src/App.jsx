@@ -9,9 +9,7 @@ function PrizeSection() {
   useEffect(() => {
     fetch(`${API_BASE}/api/prizes`)
       .then((res) => res.json())
-      .then((data) => {
-        setPrizes(data.prizes || []);
-      })
+      .then((data) => setPrizes(data.prizes || []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -19,7 +17,7 @@ function PrizeSection() {
   return (
     <section className="card">
       <h2>Prémios</h2>
-      {loading && <p>A carregar prémios...</p>}
+      {loading && <p className="hint">A carregar...</p>}
       {!loading && (
         <ul className="prize-list">
           {prizes.map((p) => (
@@ -34,6 +32,129 @@ function PrizeSection() {
   );
 }
 
+function ScorerAccordion({ label, players, goals, onAdd, onRemove }) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState("");
+  const [minute, setMinute] = useState("");
+
+  const handleConfirm = () => {
+    if (!selected || !minute) return;
+    onAdd({ player: selected, minute: Number(minute) });
+    setSelected("");
+    setMinute("");
+  };
+
+  const handleSelectPlayer = (p) => {
+    if (selected === p) {
+      setSelected("");
+      setMinute("");
+    } else {
+      setSelected(p);
+      setMinute("");
+    }
+  };
+
+  return (
+    <div className="scorer-accordion">
+      <button
+        type="button"
+        className={`scorer-header${open ? " open" : ""}`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span>{label}</span>
+        <span className="scorer-arrow">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {goals.length > 0 && !open && (
+        <div className="scorer-summary">
+          {goals.map((g, i) => (
+            <div key={i} className="scorer-chip">
+              <span>
+                {g.player} &nbsp;{g.minute}&apos;
+              </span>
+              <button type="button" className="chip-remove" onClick={() => onRemove(i)}>
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <div className="scorer-body">
+          {goals.length > 0 && (
+            <div className="scorer-summary">
+              {goals.map((g, i) => (
+                <div key={i} className="scorer-chip">
+                  <span>
+                    {g.player} &nbsp;{g.minute}&apos;
+                  </span>
+                  <button type="button" className="chip-remove" onClick={() => onRemove(i)}>
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!selected && (
+            <ul className="player-list">
+              {players.map((p) => (
+                <li key={p} className="player-item" onClick={() => handleSelectPlayer(p)}>
+                  <span>{p}</span>
+                  <span className="player-check">□</span>
+                </li>
+              ))}
+              {players.length === 0 && (
+                <li className="player-item muted-item">Sem jogadores disponíveis</li>
+              )}
+            </ul>
+          )}
+
+          {selected && (
+            <div className="minute-section">
+              <div className="minute-player-name">
+                <button
+                  type="button"
+                  className="back-button"
+                  onClick={() => {
+                    setSelected("");
+                    setMinute("");
+                  }}
+                >
+                  ←
+                </button>
+                {selected}
+              </div>
+              <div className="minute-input-row">
+                <span className="minute-label">Minuto</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={minute}
+                  onChange={(e) => setMinute(e.target.value)}
+                  placeholder="Ex: 23"
+                  className="minute-input"
+                  autoFocus
+                />
+              </div>
+              <button
+                type="button"
+                className="confirm-btn"
+                onClick={handleConfirm}
+                disabled={!minute}
+              >
+                CONFIRMAR
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BetForm({ onSubmitted, userInfo, players }) {
   const [name, setName] = useState(userInfo?.name || "");
   const [email, setEmail] = useState(userInfo?.email || "");
@@ -42,32 +163,8 @@ function BetForm({ onSubmitted, userInfo, players }) {
   const [scoreAway, setScoreAway] = useState("");
   const [homeGoals, setHomeGoals] = useState([]);
   const [awayGoals, setAwayGoals] = useState([]);
-  const [homePlayer, setHomePlayer] = useState("");
-  const [homeMinute, setHomeMinute] = useState("");
-  const [awayPlayer, setAwayPlayer] = useState("");
-  const [awayMinute, setAwayMinute] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  const addHomeGoal = () => {
-    if (!homePlayer || !homeMinute) return;
-    setHomeGoals((prev) => [
-      ...prev,
-      { player: homePlayer, minute: Number(homeMinute) },
-    ]);
-    setHomeMinute("");
-    setHomePlayer("");
-  };
-
-  const addAwayGoal = () => {
-    if (!awayPlayer || !awayMinute) return;
-    setAwayGoals((prev) => [
-      ...prev,
-      { player: awayPlayer, minute: Number(awayMinute) },
-    ]);
-    setAwayMinute("");
-    setAwayPlayer("");
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,7 +172,6 @@ function BetForm({ onSubmitted, userInfo, players }) {
 
     const parsedHome = Number(scoreHome);
     const parsedAway = Number(scoreAway);
-
     const finalName = (userInfo?.name || name || "").trim();
     const finalEmail = (userInfo?.email || email || "").trim();
     const finalPhone = (userInfo?.phone || phone || "").trim();
@@ -84,32 +180,21 @@ function BetForm({ onSubmitted, userInfo, players }) {
       setError("Indica o teu nome.");
       return;
     }
-
     if (Number.isNaN(parsedHome) || Number.isNaN(parsedAway)) {
       setError("Resultado inválido.");
       return;
     }
 
     const allGoals = [
-      ...homeGoals.map((g) => ({
-        team: "casa",
-        player: g.player,
-        minute: g.minute,
-      })),
-      ...awayGoals.map((g) => ({
-        team: "fora",
-        player: g.player,
-        minute: g.minute,
-      })),
+      ...homeGoals.map((g) => ({ team: "casa", player: g.player, minute: g.minute })),
+      ...awayGoals.map((g) => ({ team: "fora", player: g.player, minute: g.minute })),
     ];
 
     setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/api/predictions`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: finalName,
           email: finalEmail || null,
@@ -128,10 +213,6 @@ function BetForm({ onSubmitted, userInfo, players }) {
       setScoreAway("");
       setHomeGoals([]);
       setAwayGoals([]);
-      setHomePlayer("");
-      setHomeMinute("");
-      setAwayPlayer("");
-      setAwayMinute("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -141,153 +222,88 @@ function BetForm({ onSubmitted, userInfo, players }) {
 
   return (
     <section className="card">
-      <h2>Faz a tua aposta</h2>
       <form onSubmit={handleSubmit} className="form">
         {!userInfo && (
           <>
-            <div className="form-row">
-              <label>Nome *</label>
+            <div className="flat-field">
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                placeholder="Nome *"
                 required
+                className="flat-input"
               />
             </div>
-            <div className="form-row">
-              <label>Email</label>
+            <div className="flat-field">
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Opcional, para contacto se ganhares"
+                placeholder="Email"
+                className="flat-input"
               />
             </div>
-            <div className="form-row">
-              <label>Telefone</label>
+            <div className="flat-field">
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Opcional"
+                placeholder="Telefone"
+                className="flat-input"
               />
             </div>
           </>
         )}
-        <div className="form-row form-row-inline">
-          <div>
-            <label>Golos equipa da casa *</label>
+
+        <div className="score-row">
+          <div className="score-col">
+            <label className="score-team-label">{players?.homeLabel || "Casa"}</label>
             <input
               type="number"
               min="0"
               value={scoreHome}
               onChange={(e) => setScoreHome(e.target.value)}
               required
+              className="score-input"
+              placeholder="0"
             />
           </div>
-          <div>
-            <label>Golos equipa visitante *</label>
+          <div className="score-separator">—</div>
+          <div className="score-col">
+            <label className="score-team-label">{players?.awayLabel || "Fora"}</label>
             <input
               type="number"
               min="0"
               value={scoreAway}
               onChange={(e) => setScoreAway(e.target.value)}
               required
+              className="score-input"
+              placeholder="0"
             />
           </div>
         </div>
 
-        <div className="form-row">
-          <label>Marcadores e minutos dos golos</label>
-          <p className="hint">
-            Seleciona o marcador de cada equipa e o minuto do golo.
-          </p>
+        <ScorerAccordion
+          label={`Marcador ${players?.homeLabel || "Equipa da casa"}`}
+          players={players?.home || []}
+          goals={homeGoals}
+          onAdd={(g) => setHomeGoals((prev) => [...prev, g])}
+          onRemove={(i) => setHomeGoals((prev) => prev.filter((_, idx) => idx !== i))}
+        />
 
-          <div className="goals-section">
-            <div className="goals-column">
-              <h3 className="goals-title">Marcador {players?.homeLabel || "equipa da casa"}</h3>
-              <div className="goal-row">
-                <select
-                  value={homePlayer}
-                  onChange={(e) => setHomePlayer(e.target.value)}
-                >
-                  <option value="">Escolhe o jogador</option>
-                  {(players?.home || []).map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min="1"
-                  max="120"
-                  placeholder="Minuto"
-                  value={homeMinute}
-                  onChange={(e) => setHomeMinute(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={addHomeGoal}
-                >
-                  Confirmar
-                </button>
-              </div>
-              <div className="selected-goals">
-                {homeGoals.map((g, idx) => (
-                  <div key={idx} className="selected-goal-chip">
-                    {g.player} {g.minute}&apos;
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="goals-column">
-              <h3 className="goals-title">Marcador {players?.awayLabel || "equipa visitante"}</h3>
-              <div className="goal-row">
-                <select
-                  value={awayPlayer}
-                  onChange={(e) => setAwayPlayer(e.target.value)}
-                >
-                  <option value="">Escolhe o jogador</option>
-                  {(players?.away || []).map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min="1"
-                  max="120"
-                  placeholder="Minuto"
-                  value={awayMinute}
-                  onChange={(e) => setAwayMinute(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={addAwayGoal}
-                >
-                  Confirmar
-                </button>
-              </div>
-              <div className="selected-goals">
-                {awayGoals.map((g, idx) => (
-                  <div key={idx} className="selected-goal-chip">
-                    {g.player} {g.minute}&apos;
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <ScorerAccordion
+          label={`Marcador ${players?.awayLabel || "Equipa visitante"}`}
+          players={players?.away || []}
+          goals={awayGoals}
+          onAdd={(g) => setAwayGoals((prev) => [...prev, g])}
+          onRemove={(i) => setAwayGoals((prev) => prev.filter((_, idx) => idx !== i))}
+        />
 
         {error && <p className="error">{error}</p>}
 
-        <button type="submit" className="primary-button" disabled={submitting}>
-          {submitting ? "A enviar..." : "Submeter aposta"}
+        <button type="submit" className="submit-btn" disabled={submitting}>
+          {submitting ? "A enviar..." : "AS MINHAS PREVISÕES"}
         </button>
       </form>
     </section>
@@ -318,14 +334,13 @@ function Leaderboard() {
   return (
     <section className="card">
       <h2>Leaderboard</h2>
-      {loading && <p>A carregar leaderboard...</p>}
+      {loading && <p className="hint">A carregar...</p>}
       {error && <p className="error">{error}</p>}
       {!loading && !error && (
         <>
           {!data.hasResult && (
             <p className="hint">
-              O resultado real ainda não foi registado. Assim que o jogo
-              terminar, a classificação será atualizada.
+              Resultado ainda não registado. A classificação será atualizada após o jogo.
             </p>
           )}
           {data.hasResult && data.result && (
@@ -342,9 +357,9 @@ function Leaderboard() {
                 <tr>
                   <th>#</th>
                   <th>Nome</th>
-                  <th>Resultado apostado</th>
-                  <th>Marcadores (minutos)</th>
-                  {data.hasResult && <th>Categoria</th>}
+                  <th>Resultado</th>
+                  <th>Marcadores</th>
+                  {data.hasResult && <th>Prémio</th>}
                 </tr>
               </thead>
               <tbody>
@@ -359,34 +374,25 @@ function Leaderboard() {
                       {Array.isArray(item.goals) && item.goals.length > 0 ? (
                         item.goals.map((g, i) => (
                           <span key={i} className="goal-chip">
-                            {g.team === "casa" ? "Casa" : "Fora"} - {g.player} (
-                            {g.minute}&apos;)
+                            {g.team === "casa" ? "Casa" : "Fora"} - {g.player} ({g.minute}&apos;)
                           </span>
                         ))
                       ) : (
-                        <span className="muted">Sem marcadores</span>
+                        <span className="muted">—</span>
                       )}
                     </td>
                     {data.hasResult && (
                       <td>
-                        {item.prizeTier === 1 && (
-                          <span className="badge first">1º prémio</span>
-                        )}
-                        {item.prizeTier === 2 && (
-                          <span className="badge second">2º prémio</span>
-                        )}
-                        {item.prizeTier === 3 && (
-                          <span className="badge third">3º prémio</span>
-                        )}
+                        {item.prizeTier === 1 && <span className="badge first">1º</span>}
+                        {item.prizeTier === 2 && <span className="badge second">2º</span>}
+                        {item.prizeTier === 3 && <span className="badge third">3º</span>}
                       </td>
                     )}
                   </tr>
                 ))}
                 {data.leaderboard.length === 0 && (
                   <tr>
-                    <td colSpan={data.hasResult ? 5 : 4}>
-                      Ainda não há apostas registadas.
-                    </td>
+                    <td colSpan={data.hasResult ? 5 : 4}>Ainda não há apostas registadas.</td>
                   </tr>
                 )}
               </tbody>
@@ -394,45 +400,6 @@ function Leaderboard() {
           </div>
         </>
       )}
-    </section>
-  );
-}
-
-function MatchCard({ match }) {
-  if (!match) return null;
-
-  const kickoff = match.kickoff_at ? new Date(match.kickoff_at) : null;
-  const kickoffStr = kickoff
-    ? kickoff.toLocaleString("pt-PT", {
-        weekday: "long",
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : null;
-
-  return (
-    <section className="card match-card">
-      <h2>O Jogo</h2>
-      <div className="match-teams">
-        <div className="match-team">
-          {match.home_logo && (
-            <img src={match.home_logo} alt={match.home_team} className="match-team-logo" />
-          )}
-          <span className="match-team-name">{match.home_team}</span>
-        </div>
-        <span className="match-vs">VS</span>
-        <div className="match-team">
-          {match.away_logo && (
-            <img src={match.away_logo} alt={match.away_team} className="match-team-logo" />
-          )}
-          <span className="match-team-name">{match.away_team}</span>
-        </div>
-      </div>
-      {kickoffStr && <p className="match-kickoff">📅 {kickoffStr}</p>}
-      {match.description && <p className="match-description">{match.description}</p>}
     </section>
   );
 }
@@ -445,52 +412,66 @@ function EntryForm({ onEnter }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onEnter({
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-    });
+    onEnter({ name: name.trim(), email: email.trim(), phone: phone.trim() });
   };
 
   return (
-    <section className="card hero-card">
-      <h2>Bem-vindo</h2>
-      <p className="hint">
-        Preenche os teus dados para entrares no sistema de previsões deste jogo.
-      </p>
+    <section className="card">
       <form onSubmit={handleSubmit} className="form">
-        <div className="form-row">
-          <label>Nome *</label>
+        <div className="flat-field">
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder="Nome *"
             required
+            className="flat-input"
           />
         </div>
-        <div className="form-row">
-          <label>Email</label>
+        <div className="flat-field">
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Opcional"
+            placeholder="Email"
+            className="flat-input"
           />
         </div>
-        <div className="form-row">
-          <label>Telefone</label>
+        <div className="flat-field">
           <input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="Opcional"
+            placeholder="Telefone"
+            className="flat-input"
           />
         </div>
-        <button type="submit" className="primary-button">
+        <button type="submit" className="submit-btn">
           ENTRAR
         </button>
       </form>
     </section>
+  );
+}
+
+function MatchBar({ match }) {
+  if (!match) return null;
+  return (
+    <div className="match-bar">
+      <div className="match-bar-team">
+        {match.home_logo && (
+          <img src={match.home_logo} alt={match.home_team} className="match-bar-logo" />
+        )}
+        <span className="match-bar-name">{match.home_team}</span>
+      </div>
+      <span className="match-bar-vs">VS</span>
+      <div className="match-bar-team match-bar-team-away">
+        <span className="match-bar-name">{match.away_team}</span>
+        {match.away_logo && (
+          <img src={match.away_logo} alt={match.away_team} className="match-bar-logo" />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -504,64 +485,32 @@ export default function App() {
   useEffect(() => {
     fetch(`${API_BASE}/api/match`)
       .then((res) => res.json())
-      .then((data) => {
-        setMatchInfo(data.match || null);
-      })
-      .catch(() => {
-        setMatchInfo(null);
-      });
+      .then((data) => setMatchInfo(data.match || null))
+      .catch(() => setMatchInfo(null));
     fetch(`${API_BASE}/api/players`)
       .then((res) => res.json())
-      .then((data) => {
+      .then((data) =>
         setPlayers({
           home: data.home || [],
           away: data.away || [],
           homeLabel: data.homeLabel,
           awayLabel: data.awayLabel,
-        });
-      })
-      .catch(() => {
-        setPlayers({ home: [], away: [] });
-      });
+        })
+      )
+      .catch(() => setPlayers({ home: [], away: [] }));
   }, []);
 
   const goTo = (target) => {
     setPage(target);
-    if (target !== "bet") {
-      setJustSubmitted(false);
-    }
+    if (target !== "bet") setJustSubmitted(false);
   };
 
   return (
     <div className="app">
       <header className="header">
         <div className="brand">
-          {matchInfo?.home_logo && (
-            <img
-              src={matchInfo.home_logo}
-              alt={matchInfo.home_team}
-              className="team-logo"
-            />
-          )}
           <span className="ball">⚽</span>
-          {matchInfo?.away_logo && (
-            <img
-              src={matchInfo.away_logo}
-              alt={matchInfo.away_team}
-              className="team-logo"
-            />
-          )}
-          <div>
-            <h1>On The Road Game Lounge</h1>
-            <p>
-              {matchInfo
-                ? `${matchInfo.home_team} vs ${matchInfo.away_team} · ${
-                    matchInfo.description ||
-                    "Aposta no resultado exato, marcadores e minutos."
-                  }`
-                : "Aposta no resultado exato, marcadores e minutos."}
-            </p>
-          </div>
+          <h1>On The Road Game Lounge</h1>
         </div>
         <nav className="nav">
           <button
@@ -574,12 +523,10 @@ export default function App() {
             className={page === "bet" ? "nav-button active" : "nav-button"}
             onClick={() => goTo("bet")}
           >
-            Fazer aposta
+            Aposta
           </button>
           <button
-            className={
-              page === "leaderboard" ? "nav-button active" : "nav-button"
-            }
+            className={page === "leaderboard" ? "nav-button active" : "nav-button"}
             onClick={() => goTo("leaderboard")}
           >
             Leaderboard
@@ -590,7 +537,6 @@ export default function App() {
       <main className="main">
         {page === "home" && (
           <>
-            <MatchCard match={matchInfo} />
             <EntryForm
               onEnter={(info) => {
                 setUserInfo(info);
@@ -606,18 +552,15 @@ export default function App() {
             {justSubmitted && (
               <div className="card success-card">
                 <p>
-                  <strong>Aposta registada com sucesso!</strong> Podes agora
-                  ver a classificação em &quot;Leaderboard&quot; depois do
-                  jogo.
+                  <strong>Aposta registada com sucesso!</strong> Acompanha a classificação após o
+                  jogo no Leaderboard.
                 </p>
               </div>
             )}
             <BetForm
               userInfo={userInfo}
               players={players}
-              onSubmitted={() => {
-                setJustSubmitted(true);
-              }}
+              onSubmitted={() => setJustSubmitted(true)}
             />
           </>
         )}
@@ -625,10 +568,7 @@ export default function App() {
         {page === "leaderboard" && <Leaderboard />}
       </main>
 
-      <footer className="footer">
-        <span>On The Road Game Lounge · On The Road Group</span>
-      </footer>
+      <MatchBar match={matchInfo} />
     </div>
   );
 }
-
