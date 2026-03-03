@@ -356,8 +356,12 @@ function Leaderboard() {
     ? lastUpdated.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
     : null;
 
+  const leader = data.hasResult && data.leaderboard.length > 0 ? data.leaderboard[0] : null;
+  const leaderPts = leader ? getPoints(leader) : null;
+
   return (
-    <section className="card">
+    <section className="card lb-card">
+      {/* Cabeçalho */}
       <div className="lb-header">
         <h2 style={{ margin: 0 }}>Leaderboard</h2>
         <div className="live-badge">
@@ -365,43 +369,57 @@ function Leaderboard() {
           AO VIVO
         </div>
       </div>
-      {updatedStr && (
-        <p className="lb-updated">
-          {refreshing ? "A atualizar..." : `Atualizado às ${updatedStr}`}
-        </p>
-      )}
+      <p className="lb-updated">
+        {refreshing ? "A atualizar…" : updatedStr ? `Atualizado às ${updatedStr}` : ""}
+      </p>
+
+      {/* KPI chips */}
+      <div className="kpi-row">
+        <div className="kpi-chip">
+          <span className="kpi-value">{data.leaderboard.length}</span>
+          <span className="kpi-label">apostas</span>
+        </div>
+        <div className={`kpi-chip${data.hasResult ? " kpi-accent" : ""}`}>
+          <span className="kpi-value" title={leader?.name || ""}>
+            {leader ? leader.name : "—"}
+          </span>
+          <span className="kpi-label">
+            {leader ? `a liderar · ${leaderPts} pts` : "aguarda marcador"}
+          </span>
+        </div>
+        <div className="kpi-chip">
+          <span className="kpi-value">
+            {data.result ? `${data.result.score_home}–${data.result.score_away}` : "—"}
+          </span>
+          <span className="kpi-label">marcador</span>
+        </div>
+      </div>
+
       {loading && <p className="hint">A carregar...</p>}
       {error && <p className="error">{error}</p>}
       {!loading && !error && (
-        <>
+        <div className="lb-list">
           {!data.hasResult && (
-            <p className="hint">
-              A aguardar dados do jogo — as classificações aparecem assim que o marcador for atualizado.
+            <p className="hint" style={{ marginBottom: "0.5rem" }}>
+              A aguardar marcador — classificações aparecem assim que for atualizado.
             </p>
           )}
-          {data.hasResult && data.result && (
-            <div className="result-chip">
-              <span className="result-chip-label">Marcador atual</span>
-              <span className="result-chip-score">
-                {data.result.score_home} – {data.result.score_away}
-              </span>
-            </div>
-          )}
-          <div className="lb-list">
-            {data.leaderboard.map((item, idx) => {
-              const points = getPoints(item);
-              const isPrize = item.prizeTier != null;
-              const thirdItem = data.leaderboard[2];
-              const gapToThird =
-                data.hasResult && !isPrize && thirdItem
-                  ? item.distance - thirdItem.distance
-                  : null;
+          {data.leaderboard.flatMap((item, idx) => {
+            const points = getPoints(item);
+            const isPrize = item.prizeTier != null;
+            const pct = points !== null ? (points / 1000) * 100 : 0;
+            const thirdItem = data.leaderboard[2];
+            const gapToThird =
+              data.hasResult && !isPrize && thirdItem
+                ? item.distance - thirdItem.distance
+                : null;
 
-              return (
-                <div
-                  key={item.id}
-                  className={`lb-row${isPrize ? ` lb-prize-${item.prizeTier}` : ""}`}
-                >
+            const row = (
+              <div
+                key={item.id}
+                className={`lb-row${isPrize ? ` lb-prize-${item.prizeTier}` : ""}`}
+              >
+                <div className="lb-row-top">
                   <div className="lb-rank">
                     {item.prizeTier === 1 && <span className="badge first">1º</span>}
                     {item.prizeTier === 2 && <span className="badge second">2º</span>}
@@ -419,12 +437,8 @@ function Leaderboard() {
                       <div className="lb-pts">
                         {points}<span className="lb-pts-label"> pts</span>
                       </div>
-                      {item.isExact && (
-                        <div className="lb-status exact">✓ Exato</div>
-                      )}
-                      {!item.isExact && isPrize && (
-                        <div className="lb-status prize">Prémio 🏆</div>
-                      )}
+                      {item.isExact && <div className="lb-status exact">✓ Exato</div>}
+                      {!item.isExact && isPrize && <div className="lb-status prize">Prémio 🏆</div>}
                       {!isPrize && gapToThird !== null && (
                         <div className="lb-status gap">−{gapToThird} pts p/ 3º</div>
                       )}
@@ -434,15 +448,29 @@ function Leaderboard() {
                     </div>
                   )}
                 </div>
-              );
-            })}
-            {data.leaderboard.length === 0 && (
-              <p className="hint" style={{ marginTop: "0.5rem" }}>
-                Ainda não há apostas registadas.
-              </p>
-            )}
-          </div>
-        </>
+                {data.hasResult && points !== null && (
+                  <div className="lb-bar-wrap">
+                    <div className="lb-bar" style={{ width: `${pct}%` }} />
+                  </div>
+                )}
+              </div>
+            );
+
+            const divider =
+              idx === 2 && data.leaderboard.length > 3 ? (
+                <div key="divider" className="lb-divider">
+                  ▼ Fora dos prémios
+                </div>
+              ) : null;
+
+            return divider ? [row, divider] : [row];
+          })}
+          {data.leaderboard.length === 0 && (
+            <p className="hint" style={{ marginTop: "0.5rem" }}>
+              Ainda não há apostas registadas.
+            </p>
+          )}
+        </div>
       )}
     </section>
   );

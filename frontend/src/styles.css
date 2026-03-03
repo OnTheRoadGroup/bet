@@ -496,27 +496,46 @@ body {
   color: #9ca3af;
 }
 
-.result-chip {
+/* KPI chips */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.kpi-chip {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.65rem;
+  padding: 0.65rem 0.75rem;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 0.85rem;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 0.5rem;
-  margin-bottom: 0.875rem;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
 }
 
-.result-chip-label {
-  font-size: 0.78rem;
-  color: #166534;
-  font-weight: 500;
+.kpi-chip.kpi-accent {
+  background: #eff6ff;
+  border-color: #bfdbfe;
 }
 
-.result-chip-score {
+.kpi-value {
   font-size: 1.1rem;
   font-weight: 700;
   color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi-label {
+  font-size: 0.62rem;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .lb-list {
@@ -525,15 +544,53 @@ body {
   gap: 0.4rem;
 }
 
+.lb-divider {
+  font-size: 0.65rem;
+  color: #9ca3af;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.4rem 0;
+  border-top: 1px dashed #e5e7eb;
+  border-bottom: 1px dashed #e5e7eb;
+  margin: 0.15rem 0;
+}
+
 .lb-row {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column;
   padding: 0.7rem 0.75rem;
   border-radius: 0.5rem;
   background: #f9fafb;
   border: 1px solid transparent;
 }
+
+.lb-row-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Barra de progresso */
+.lb-bar-wrap {
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.6rem;
+}
+
+.lb-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+.lb-prize-1 .lb-bar { background: linear-gradient(90deg, #ca8a04, #facc15); }
+.lb-prize-2 .lb-bar { background: linear-gradient(90deg, #475569, #94a3b8); }
+.lb-prize-3 .lb-bar { background: linear-gradient(90deg, #c2410c, #fb923c); }
 
 .lb-prize-1 {
   background: #fefce8;
